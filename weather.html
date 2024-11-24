@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeteoInfo - Weather and Time</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #fff;
+            background-color: #000;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 600px;
+            background: rgba(43, 43, 43, 0.8);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .header {
+            background: #444;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2em;
+            color: #aaa;
+        }
+
+        .search-bar {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .search-bar input[type="text"] {
+            padding: 10px;
+            width: 70%;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .search-bar button {
+            padding: 10px;
+            border: none;
+            background-color: #ff6347;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .search-bar button:hover {
+            background-color: #e55347;
+        }
+
+        .details {
+            padding: 15px;
+        }
+
+        .details h2 {
+            margin: 0;
+            font-size: 1.5em;
+            font-weight: normal;
+            color: #fff;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+
+        .description {
+            font-style: italic;
+            font-size: 0.9em;
+            color: #bbb;
+            margin-top: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px;
+            background: #444;
+            font-size: 0.9em;
+            color: #bbb;
+        }
+        .alerts {
+    margin-top: 10px;
+    padding: 15px;
+    border-radius: 10px;
+    display: none; 
+}
+
+.alerts.red {
+    background-color: red;
+    color: white;
+}
+
+.alerts.orange {
+    background-color: orange;
+    color: white;
+}
+
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div id="city-name">MeteoInfo</div>
+            <div id="current-time">--:--</div>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" id="city-input" placeholder="Enter city name">
+            <button onclick="getWeather()">Get Forecast</button>
+        </div>
+
+        <div class="details">
+            <h2>Details</h2>
+            <div class="detail-item"><span>Temperature:</span> <span id="temperature">--°C</span></div>
+            <div class="detail-item"><span>Feels like:</span> <span id="feels-like">--°C</span></div>
+            <div class="detail-item"><span>Humidity:</span> <span id="humidity">--%</span></div>
+            <div class="detail-item"><span>Visibility:</span> <span id="visibility">-- km</span></div>
+            <div class="detail-item"><span>Wind Speed:</span> <span id="wind-speed">-- m/s</span></div>
+            <div class="description" id="description">Please enter a city to see the forecast.</div>
+            <div id="alerts" class="alerts"></div>
+        </div>
+       
+        
+        
+
+        <div class="footer">
+            MeteoInfo © All rights reserved
+        </div>
+    </div>
+
+    <script>
+        const weatherApiKey = "93d3755ec408302648e0d95a42d662e4"; 
+        const timezoneApiKey = "714WQCQYXTH8"; 
+        const mapApiKey = "XpTWUGfi9nhPiqKCzKjz"; 
+        async function getWeather() {
+    const city = document.getElementById("city-input").value;
+    if (!city) {
+        alert("Please enter a city name.");
+        return;
+    }
+
+    const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${weatherApiKey}`;
+
+    try {
+        const response = await fetch(weatherUrl);
+        if (!response.ok) {
+            throw new Error(`Weather API Error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        document.getElementById("city-name").textContent = `MeteoInfo - ${data.name}`;
+        document.getElementById("temperature").textContent = `${data.main.temp.toFixed(1)}°C`;
+        document.getElementById("feels-like").textContent = `${data.main.feels_like.toFixed(1)}°C`;
+        document.getElementById("humidity").textContent = `${data.main.humidity}%`;
+        document.getElementById("visibility").textContent = `${(data.visibility / 1000).toFixed(1)} km`;
+        document.getElementById("wind-speed").textContent = `${data.wind.speed.toFixed(1)} m/s`;
+        document.getElementById("description").textContent = data.weather[0].description;
+
+        const alertsDiv = document.getElementById("alerts");
+        alertsDiv.style.display = "none"; 
+
+       
+        const oneCallUrl = `https://api.openweathermap.org/data/2.5/onecall?lat=${data.coord.lat}&lon=${data.coord.lon}&appid=${weatherApiKey}`;
+        const oneCallResponse = await fetch(oneCallUrl);
+
+        if (oneCallResponse.ok) {
+            const oneCallData = await oneCallResponse.json();
+            if (oneCallData.alerts && oneCallData.alerts.length > 0) {
+                const alert = oneCallData.alerts[0];
+                alertsDiv.style.display = "block";
+
+                if (alert.event.toLowerCase().includes("emergency")) {
+                    alertsDiv.className = "alerts red";
+                } else {
+                    alertsDiv.className = "alerts orange";
+                }
+
+                alertsDiv.textContent = `${alert.event}: ${alert.description}`;
+            }
+        }
+
+        const latitude = data.coord.lat;
+        const longitude = data.coord.lon;
+
+        const timezoneUrl = `https://api.timezonedb.com/v2.1/get-time-zone?key=${timezoneApiKey}&format=json&by=position&lat=${latitude}&lng=${longitude}`;
+        const timezoneResponse = await fetch(timezoneUrl);
+        if (!timezoneResponse.ok) {
+            throw new Error("Timezone API Error");
+        }
+        const timezoneData = await timezoneResponse.json();
+
+        const gmtOffset = timezoneData.gmtOffset * 1000;
+        const timezoneName = timezoneData.zoneName;
+
+        clearInterval(window.liveTimeInterval);
+        function updateLiveTime() {
+            const now = new Date();
+            const localTime = new Date(now.getTime() + gmtOffset + now.getTimezoneOffset() * 60000);
+            document.getElementById("current-time").textContent = `${localTime.toLocaleTimeString()} (${timezoneName})`;
+        }
+        window.liveTimeInterval = setInterval(updateLiveTime, 1000);
+        updateLiveTime();
+
+        const mapContainer = document.getElementById("map");
+        mapContainer.innerHTML = '';
+
+        const map = L.map(mapContainer).setView([latitude, longitude], 10);
+
+        L.tileLayer(`https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${mapApiKey}`, {
+            attribution: '© OpenStreetMap contributors, © MapTiler',
+            subdomains: 'abc',
+        }).addTo(map);
+
+        L.marker([latitude, longitude]).addTo(map)
+            .bindPopup(`Weather in ${data.name}`)
+            .openPopup();
+
+    } catch (error) {
+        console.error(error);
+        alert("Error fetching data: " + error.message);
+    }
+}
+
+
+
+
+    </script>
+</body>
+</html>
