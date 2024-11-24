@@ -1,2 +1,3 @@
 # MeteoInfo
-This is a website whwere you can check the weather to your city
+this was a test only 
+
